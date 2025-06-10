@@ -1,7 +1,7 @@
 const roles = {
     "ADMIN": "admin",
-    "MEMBER": "member",
-    "GUEST": "guest"
+    "MARKETING": "marketing",
+    "USER": "user"
 }
 async function AppSpecificPlugin() {
     let self = {};
@@ -11,20 +11,23 @@ async function AppSpecificPlugin() {
     const persistence = await $$.loadPlugin("StandardPersistence");
     persistence.configureTypes({
         spaceStatus: {
-            name: "string",
-            users: "array"
+            name: "string"
         }
     });
 
     await persistence.createIndex("spaceStatus", "name");
+
     self.listAllSpaces = async function(){
         return await persistence.getEverySpaceStatus();
     }
 
-    self.createSpace = async function(spaceName, email){
+    self.getAllSpaces = async function(){
+        return await persistence.getEverySpaceStatusObject();
+    }
+
+    self.createSpace = async function(spaceName){
         let spaceData = {
-            name: spaceName,
-            users: [{email: email, role: roles.ADMIN}]
+            name: spaceName
         }
         return await persistence.createSpaceStatus(spaceData);
     }
@@ -37,13 +40,7 @@ async function AppSpecificPlugin() {
             return "You can't delete your last space";
         }
         let spaceStatus = await self.getSpaceStatus(spaceId);
-        let user = spaceStatus.users.find(user => user.email === email);
-        if (!user) {
-            return "You dont have permission to delete this space";
-        }
-        if (user.role !== roles.ADMIN) {
-            return "You dont have permission to delete this space";
-        }
+
         //unlink space from all users
         for (let userId of Object.keys(spaceStatus.users)) {
             await self.unlinkSpaceFromUser(email, spaceId);
@@ -132,10 +129,7 @@ async function AppSpecificPlugin() {
         }
         return spaces;
     }
-    self.getDefaultSpaceAgentId = async function (spaceId) {
-        let spaceStatus = await persistence.getSpaceStatus(spaceId);
-        return spaceStatus.defaultAgent;
-    }
+
     self.founderSpaceExists = async function () {
         return await persistence.hasSpaceStatus(process.env.SYSADMIN_SPACE);
     }
@@ -150,10 +144,19 @@ async function AppSpecificPlugin() {
         let userStatus = await persistence.getUserLoginStatus(process.env.SYSADMIN_EMAIL);
         return userStatus.globalUserId === userId;
     }
+    self.persistence = persistence;
     return self;
 }
 
 let singletonInstance = undefined;
+async function getUserRole(email) {
+    let userExists = await singletonInstance.persistence.hasUserLoginStatus(email);
+    if(!userExists){
+        return false;
+    }
+    let user = await singletonInstance.persistence.getUserLoginStatus(email);
+    return user.role;
+}
 
 module.exports = {
     getInstance: async function () {
@@ -164,6 +167,72 @@ module.exports = {
     },
     getAllow: function () {
         return async function (globalUserId, email, command, ...args) {
+            // let role;
+            // switch (command){
+            //     case "isFounder":
+            //     case "founderSpaceExists":
+            //     case "rewardUser":
+            //         return true;
+            //     case "getFounderId":
+            //     case "listAllSpaces":
+            //         return args[0] === process.env.SERVERLESS_AUTH_SECRET;
+            //
+            //     case "linkSpaceToUser":
+            //     case "addSpaceToUsers":
+            //     case "deleteSpace":
+            //         if(await singletonInstance.isFounder(globalUserId)){
+            //             return true;
+            //         }
+            //         role = await getUserRole(email, args[1]);
+            //         if(!role){
+            //             return false;
+            //         }
+            //         return role === roles.ADMIN;
+            //
+            //     case "setUserCurrentSpace":
+            //         if(await singletonInstance.isFounder(globalUserId)){
+            //             return true;
+            //         }
+            //         return email === args[0];
+            //     case "getDefaultSpaceId":
+            //     case "listUserSpaces":
+            //         if(await singletonInstance.isFounder(globalUserId)){
+            //             return true;
+            //         }
+            //         return email === args[0];
+            //
+            //
+            //     case "getSpaceStatus":
+            //         if(await singletonInstance.isFounder(globalUserId)){
+            //             return true;
+            //         }
+            //         //guest
+            //         role = await getUserRole(email, args[0]);
+            //         if(!role){
+            //             return false;
+            //         }
+            //         return true;
+            //     case "createSpace":
+            //         return email === args[1] || await singletonInstance.isFounder(globalUserId);
+            //     case "unlinkSpaceFromUser":
+            //         if(await singletonInstance.isFounder(globalUserId)){
+            //             return true;
+            //         }
+            //         //member of the same space
+            //         role = await getUserRole(args[0], args[1]);
+            //         if(!role){
+            //             return false;
+            //         }
+            //         let adminRole = await getUserRole(email, args[1]);
+            //         if(!adminRole){
+            //             return false;
+            //         }
+            //         return adminRole === roles.ADMIN;
+            //     case "getAllSpaces":
+            //         return await singletonInstance.isFounder(globalUserId);
+            //     default:
+            //         return true;
+            // }
             return true;
         }
     },
