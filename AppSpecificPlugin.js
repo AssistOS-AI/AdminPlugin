@@ -20,18 +20,15 @@ async function AppSpecificPlugin() {
     self.listAllSpaces = async function(){
         return await persistence.getEverySpaceStatus();
     }
-
     self.getAllSpaces = async function(){
         return await persistence.getEverySpaceStatusObject();
     }
-
     self.createSpace = async function(spaceName){
         let spaceData = {
             name: spaceName
         }
         return await persistence.createSpaceStatus(spaceData);
     }
-
     self.deleteSpace = async function (email, spaceId) {
         let UserLogin = await $$.loadPlugin("UserLogin");
         let res = await UserLogin.getUserInfo(email);
@@ -47,7 +44,6 @@ async function AppSpecificPlugin() {
         }
         await persistence.deleteSpaceStatus(spaceId);
     }
-
     self.getSpaceStatus = async function(spaceId){
         let spaceExists = await persistence.hasSpaceStatus(spaceId);
         if(spaceExists){
@@ -129,7 +125,6 @@ async function AppSpecificPlugin() {
         }
         return spaces;
     }
-
     self.founderSpaceExists = async function () {
         return await persistence.hasSpaceStatus(process.env.SYSADMIN_SPACE);
     }
@@ -143,6 +138,29 @@ async function AppSpecificPlugin() {
         }
         let userStatus = await persistence.getUserLoginStatus(process.env.SYSADMIN_EMAIL);
         return userStatus.globalUserId === userId;
+    }
+
+    self.getRegisteredUsers = async function (timestamp) {
+
+    }
+    self.getRegisteredUsersCount = async function () {
+        let users = await persistence.getEveryUserLoginStatus();
+        return users.length;
+    }
+    self.setUserRole = async function (email, role) {
+        if(!Object.values(roles).includes(role)){
+            throw new Error("Invalid role: " + role);
+        }
+        let userLoginStatus = await persistence.getUserLoginStatus(email);
+        userLoginStatus.role = role;
+        await persistence.updateUserLoginStatus(userLoginStatus);
+    }
+    self.deleteUser = async function (email) {
+        let UserLogin = await $$.loadPlugin("UserLogin");
+        await UserLogin.deleteUser(email);
+    }
+    self.blockUser = async function (email) {
+
     }
     self.persistence = persistence;
     return self;
