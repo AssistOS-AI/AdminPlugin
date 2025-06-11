@@ -1,0 +1,13 @@
+{
+    "name": "AdminComponent",
+    "main": "AppSpecificPlugin.js",
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/AssistOS-AI/AdminComponent.git"
+    },
+    "license": "MIT",
+    "bugs": {
+        "url": "https://github.com/AssistOS-AI/AdminComponent.git/issues"
+    },
+    "homepage": "https://github.com/AssistOS-AI/AdminComponent.git#readme"
+}
