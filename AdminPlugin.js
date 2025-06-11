@@ -3,7 +3,7 @@ const roles = {
     "MARKETING": "marketing",
     "USER": "user"
 }
-async function AppSpecificPlugin() {
+async function AdminPlugin() {
     let self = {};
     self.rewardUser = async function (user, referrerId) {
         return true;
@@ -179,7 +179,7 @@ async function getUserRole(email) {
 module.exports = {
     getInstance: async function () {
         if (!singletonInstance) {
-            singletonInstance = await AppSpecificPlugin();
+            singletonInstance = await AdminPlugin();
         }
         return singletonInstance;
     },
