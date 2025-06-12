@@ -1,11 +1,6 @@
-
+const constants = require("../utils/constants.js");
 async function AdminPlugin() {
     let self = {};
-    self.roles = {
-        "ADMIN": "admin",
-        "MARKETING": "marketing",
-        "USER": "user"
-    }
     self.rewardUser = async function (user, referrerId) {
         return true;
     }
@@ -23,14 +18,14 @@ async function AdminPlugin() {
         return userStatus.globalUserId === userId;
     }
     self.getAllUsers = async function () {
-        let users = await persistence.getEveryUserLoginStatus();
+        let users = await persistence.getEveryUserLoginStatusObject();
         let userList = [];
         for(let user of users){
             userList.push({
                 email: user.email,
                 role: user.role,
                 blocked: user.blocked,
-                userInfo: user.userInfo
+                userInfo: user.userInfo,
             });
         }
         return userList;
@@ -43,12 +38,12 @@ async function AdminPlugin() {
         return users.length;
     }
     self.setUserRole = async function (email, role) {
-        if(!Object.values(self.roles).includes(role)){
+        if(!Object.values(constants.ROLES).includes(role)){
             throw new Error("Invalid role: " + role);
         }
         let userLoginStatus = await persistence.getUserLoginStatus(email);
         userLoginStatus.role = role;
-        await persistence.updateUserLoginStatus(userLoginStatus);
+        await persistence.updateUserLoginStatus(email, userLoginStatus);
     }
     self.deleteUser = async function (email) {
         let UserLogin = await $$.loadPlugin("UserLogin");
@@ -60,12 +55,17 @@ async function AdminPlugin() {
         await persistence.updateUserLoginStatus(userLoginStatus);
     }
     self.getMatchingUsers = async function (input) {
-        let UserLogin = await $$.loadPlugin("UserLogin");
-        let users = await UserLogin.getEveryUserLoginStatusObject();
+        let users = await persistence.getEveryUserLoginStatusObject();
         let matchingUsers = [];
         for(let user of users){
-            if(user.email.contains(input)){
-                matchingUsers.push(user.email);
+            if(user.email.includes(input)){
+                matchingUsers.push({
+                    email: user.email,
+                    blocked: user.blocked,
+                    role: user.role,
+                    userInfo: user.userInfo,
+                    globalUserId: user.globalUserId
+                });
             }
         }
         return matchingUsers;
