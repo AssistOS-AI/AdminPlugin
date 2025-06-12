@@ -1,10 +1,11 @@
-const roles = {
-    "ADMIN": "admin",
-    "MARKETING": "marketing",
-    "USER": "user"
-}
+
 async function AdminPlugin() {
     let self = {};
+    self.roles = {
+        "ADMIN": "admin",
+        "MARKETING": "marketing",
+        "USER": "user"
+    }
     self.rewardUser = async function (user, referrerId) {
         return true;
     }
@@ -21,7 +22,19 @@ async function AdminPlugin() {
         let userStatus = await persistence.getUserLoginStatus(process.env.SYSADMIN_EMAIL);
         return userStatus.globalUserId === userId;
     }
-
+    self.getAllUsers = async function () {
+        let users = await persistence.getEveryUserLoginStatus();
+        let userList = [];
+        for(let user of users){
+            userList.push({
+                email: user.email,
+                role: user.role,
+                blocked: user.blocked,
+                userInfo: user.userInfo
+            });
+        }
+        return userList;
+    }
     self.getRegisteredUsers = async function (timestamp) {
 
     }
@@ -30,7 +43,7 @@ async function AdminPlugin() {
         return users.length;
     }
     self.setUserRole = async function (email, role) {
-        if(!Object.values(roles).includes(role)){
+        if(!Object.values(self.roles).includes(role)){
             throw new Error("Invalid role: " + role);
         }
         let userLoginStatus = await persistence.getUserLoginStatus(email);
@@ -45,6 +58,17 @@ async function AdminPlugin() {
         let userLoginStatus = await persistence.getUserLoginStatus(email);
         userLoginStatus.blocked = true;
         await persistence.updateUserLoginStatus(userLoginStatus);
+    }
+    self.getMatchingUsers = async function (input) {
+        let UserLogin = await $$.loadPlugin("UserLogin");
+        let users = await UserLogin.getEveryUserLoginStatusObject();
+        let matchingUsers = [];
+        for(let user of users){
+            if(user.email.contains(input)){
+                matchingUsers.push(user.email);
+            }
+        }
+        return matchingUsers;
     }
     self.persistence = persistence;
     return self;
