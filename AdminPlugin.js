@@ -17,10 +17,12 @@ async function AdminPlugin() {
         let userStatus = await persistence.getUserLoginStatus(process.env.SYSADMIN_EMAIL);
         return userStatus.globalUserId === userId;
     }
-    self.getAllUsers = async function () {
-        let users = await persistence.getEveryUserLoginStatusObject();
+    self.getUsers = async function (offset = 0, limit = 10) {
+        let allUsersIds = await persistence.getEveryUserLoginStatus();
+        const usersIds = allUsersIds.slice(offset, offset + limit);
         let userList = [];
-        for(let user of users){
+        for(let userId of usersIds){
+            let user = await persistence.getUserLoginStatus(userId);
             userList.push({
                 email: user.email,
                 role: user.role,
@@ -28,12 +30,11 @@ async function AdminPlugin() {
                 userInfo: user.userInfo,
             });
         }
+
         return userList;
     }
-    self.getRegisteredUsers = async function (timestamp) {
 
-    }
-    self.getRegisteredUsersCount = async function () {
+    self.getUsersCount = async function () {
         let users = await persistence.getEveryUserLoginStatus();
         return users.length;
     }
@@ -64,7 +65,6 @@ async function AdminPlugin() {
                     blocked: user.blocked,
                     role: user.role,
                     userInfo: user.userInfo,
-                    globalUserId: user.globalUserId
                 });
             }
         }
@@ -93,18 +93,34 @@ module.exports = {
     },
     getAllow: function () {
         return async function (globalUserId, email, command, ...args) {
-            // let role;
-            // switch (command){
-            //     case "isFounder":
-            //     case "founderSpaceExists":
-            //     case "rewardUser":
-            //         return true;
-            //     case "getFounderId":
-            //         return args[0] === process.env.SERVERLESS_AUTH_SECRET;
-            //
-            //     default:
-            //         return false;
-            // }
+            let role;
+            switch (command){
+                case "isFounder":
+                case "founderSpaceExists":
+                case "rewardUser":
+                    return true;
+                case "getFounderId":
+                    // role = await getUserRole(email);
+                    // if(!role){
+                    //     return false;
+                    // }
+                    // return role === constants.ROLES.ADMIN;
+                    return true;
+
+                case "getUsers":
+                case "blockUser":
+                case "deleteUser":
+                case "setUserRole":
+                case "getUsersCount":
+                case "getMatchingUsers":
+                    role = await getUserRole(email);
+                    if(!role){
+                        return false;
+                    }
+                    return role === constants.ROLES.ADMIN || role === constants.ROLES.SUPER_ADMIN;
+                default:
+                    return false;
+            }
             return true;
         }
     },
