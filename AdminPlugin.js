@@ -53,12 +53,12 @@ async function AdminPlugin() {
     self.blockUser = async function (email) {
         let userLoginStatus = await persistence.getUserLoginStatus(email);
         userLoginStatus.blocked = true;
-        await persistence.updateUserLoginStatus(userLoginStatus);
+        await persistence.updateUserLoginStatus(userLoginStatus.id, userLoginStatus);
     }
     self.unblockUser = async function (email) {
         let userLoginStatus = await persistence.getUserLoginStatus(email);
         userLoginStatus.blocked = false;
-        await persistence.updateUserLoginStatus(userLoginStatus);
+        await persistence.updateUserLoginStatus(userLoginStatus.id, userLoginStatus);
     }
     self.getMatchingUsers = async function (input, offset = 0, limit = 10) {
         let users = await persistence.getEveryUserLoginStatusObject();
