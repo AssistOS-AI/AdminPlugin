@@ -25,8 +25,8 @@ async function AdminPlugin() {
             let user = await persistence.getUserLoginStatus(userId);
             userList.push({
                 email: user.email,
-                role: user.role,
-                blocked: user.blocked,
+                role: user.role || constants.ROLES.USER,
+                blocked: user.blocked || false,
                 userInfo: user.userInfo,
             });
         }
@@ -55,19 +55,25 @@ async function AdminPlugin() {
         userLoginStatus.blocked = true;
         await persistence.updateUserLoginStatus(userLoginStatus);
     }
-    self.getMatchingUsers = async function (input) {
+    self.unblockUser = async function (email) {
+        let userLoginStatus = await persistence.getUserLoginStatus(email);
+        userLoginStatus.blocked = false;
+        await persistence.updateUserLoginStatus(userLoginStatus);
+    }
+    self.getMatchingUsers = async function (input, offset = 0, limit = 10) {
         let users = await persistence.getEveryUserLoginStatusObject();
         let matchingUsers = [];
         for(let user of users){
             if(user.email.includes(input)){
                 matchingUsers.push({
                     email: user.email,
-                    blocked: user.blocked,
-                    role: user.role,
+                    blocked: user.blocked || false,
+                    role: user.role || constants.ROLES.USER,
                     userInfo: user.userInfo,
                 });
             }
         }
+        matchingUsers = matchingUsers.slice(offset, offset + limit);
         return matchingUsers;
     }
     self.persistence = persistence;
@@ -81,7 +87,7 @@ async function getUserRole(email) {
         return false;
     }
     let user = await singletonInstance.persistence.getUserLoginStatus(email);
-    return user.role;
+    return user.role || constants.ROLES.USER;
 }
 
 module.exports = {
@@ -109,6 +115,7 @@ module.exports = {
 
                 case "getUsers":
                 case "blockUser":
+                case "unblockUser":
                 case "deleteUser":
                 case "setUserRole":
                 case "getUsersCount":
@@ -117,11 +124,10 @@ module.exports = {
                     if(!role){
                         return false;
                     }
-                    return role === constants.ROLES.ADMIN || role === constants.ROLES.SUPER_ADMIN;
+                    return role === constants.ROLES.ADMIN;
                 default:
                     return false;
             }
-            return true;
         }
     },
     getDependencies: function () {
