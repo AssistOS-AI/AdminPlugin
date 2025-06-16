@@ -10,12 +10,15 @@ async function AdminPlugin() {
         let userStatus = await persistence.getUserLoginStatus(process.env.SYSADMIN_EMAIL);
         return userStatus.globalUserId;
     }
-    self.isFounder = async function (userId) {
-        if(!await persistence.hasUserLoginStatus(process.env.SYSADMIN_EMAIL)){
+    self.getUserRole = async function (email) {
+        if(!await persistence.hasUserLoginStatus(email)){
             return false;
         }
-        let userStatus = await persistence.getUserLoginStatus(process.env.SYSADMIN_EMAIL);
-        return userStatus.globalUserId === userId;
+        let userStatus = await persistence.getUserLoginStatus(email);
+        return userStatus.role || constants.ROLES.USER;
+    }
+    self.getRoles = async function () {
+        return constants.ROLES;
     }
     self.getUsers = async function (offset = 0, limit = 10) {
         let allUsersIds = await persistence.getEveryUserLoginStatus();
@@ -81,14 +84,6 @@ async function AdminPlugin() {
 }
 
 let singletonInstance = undefined;
-async function getUserRole(email) {
-    let userExists = await singletonInstance.persistence.hasUserLoginStatus(email);
-    if(!userExists){
-        return false;
-    }
-    let user = await singletonInstance.persistence.getUserLoginStatus(email);
-    return user.role || constants.ROLES.USER;
-}
 
 module.exports = {
     getInstance: async function () {
@@ -101,9 +96,10 @@ module.exports = {
         return async function (globalUserId, email, command, ...args) {
             let role;
             switch (command){
-                case "isFounder":
+                case "getUserRole":
                 case "founderSpaceExists":
                 case "rewardUser":
+                case "getRoles":
                     return true;
                 case "getFounderId":
                     // role = await getUserRole(email);
@@ -120,11 +116,11 @@ module.exports = {
                 case "setUserRole":
                 case "getUsersCount":
                 case "getMatchingUsers":
-                    role = await getUserRole(email);
+                    role = await singletonInstance.getUserRole(email);
                     if(!role){
                         return false;
                     }
-                    return role === constants.ROLES.ADMIN;
+                    return role === constants.ROLES.ADMIN || role === constants.ROLES.MARKETING;
                 default:
                     return false;
             }
