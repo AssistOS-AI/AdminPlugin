@@ -5,7 +5,17 @@ async function AdminPlugin() {
         return true;
     }
     const persistence = await $$.loadPlugin("StandardPersistence");
-
+    await persistence.configureTypes({
+        ticket: {
+            email: "string",
+            subject: "string",
+            message: "string",
+            resolved: "boolean",
+            resolutionMessage: "string",
+        }
+    });
+    await persistence.createIndex("ticket", "subject");
+    await persistence.createGrouping("tickets", "ticket", "resolved");
     self.getFounderId = async function () {
         let userStatus = await persistence.getUserLoginStatus(process.env.SYSADMIN_EMAIL);
         return userStatus.globalUserId;
@@ -80,6 +90,49 @@ async function AdminPlugin() {
         }
         return users;
     }
+
+    self.createTicket = async function (email, subject, message) {
+        await persistence.createTicket({
+            email: email,
+            subject: subject,
+            message: message,
+            resolved: false
+        });
+    }
+    self.resolveTicket = async function (id, resolutionMessage) {
+        let ticket = await persistence.getTicket(id);
+        if (!ticket) {
+            throw new Error("Ticket not found");
+        }
+        ticket.resolved = true;
+        ticket.resolutionMessage = resolutionMessage;
+        await persistence.updateTicket(ticket);
+    }
+    self.getTicketsCount = async function () {
+        let tickets = await persistence.getEveryTicket();
+        return tickets.length;
+    }
+    self.getUnresolvedTicketsCount = async function () {
+        let tickets = await persistence.getTicketsByResolved(false);
+        return tickets.length;
+    }
+    self.getTickets = async function (offset = 0, limit = 10) {
+        let allTickets = await persistence.getEveryTicket();
+        const ticketIds = allTickets.slice(offset, offset + limit);
+        let ticketList = [];
+        for (let ticketId of ticketIds) {
+            let ticket = await persistence.getTicket(ticketId);
+            ticketList.push({
+                id: ticket.id,
+                email: ticket.email,
+                subject: ticket.subject,
+                message: ticket.message,
+                resolved: ticket.resolved,
+                resolutionMessage: ticket.resolutionMessage || "",
+            });
+        }
+        return ticketList;
+    }
     self.persistence = persistence;
     return self;
 }
@@ -101,6 +154,7 @@ module.exports = {
                 case "founderSpaceExists":
                 case "rewardUser":
                 case "getRoles":
+                case "createTicket":
                     return true;
                 case "getFounderId":
                     // role = await getUserRole(email);
@@ -117,6 +171,10 @@ module.exports = {
                 case "setUserRole":
                 case "getUsersCount":
                 case "getMatchingUsers":
+                case "resolveTicket":
+                case "getTickets":
+                case "getTicketsCount":
+                case "getUnresolvedTicketsCount":
                     role = await singletonInstance.getUserRole(email);
                     if(!role){
                         return false;
