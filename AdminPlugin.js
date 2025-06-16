@@ -64,20 +64,21 @@ async function AdminPlugin() {
         await persistence.updateUserLoginStatus(userLoginStatus.id, userLoginStatus);
     }
     self.getMatchingUsers = async function (input, offset = 0, limit = 10) {
-        let users = await persistence.getEveryUserLoginStatusObject();
-        let matchingUsers = [];
-        for(let user of users){
-            if(user.email.includes(input)){
-                matchingUsers.push({
-                    email: user.email,
-                    blocked: user.blocked || false,
-                    role: user.role || constants.ROLES.USER,
-                    userInfo: user.userInfo,
-                });
-            }
+        let emails = await persistence.getEveryUserLoginStatusEmail();
+        let matchingEmails = emails.filter(email => email.includes(input));
+        matchingEmails = matchingEmails.slice(offset, offset + limit);
+
+        let users = [];
+        for(let email of matchingEmails){
+            let user = await persistence.getUserLoginStatus(email);
+            users.push({
+                email: user.email,
+                blocked: user.blocked || false,
+                role: user.role || constants.ROLES.USER,
+                userInfo: user.userInfo,
+            });
         }
-        matchingUsers = matchingUsers.slice(offset, offset + limit);
-        return matchingUsers;
+        return users;
     }
     self.persistence = persistence;
     return self;
