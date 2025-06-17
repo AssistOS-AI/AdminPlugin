@@ -16,6 +16,7 @@ async function AdminPlugin() {
     });
     await persistence.createIndex("ticket", "subject");
     await persistence.createGrouping("tickets", "ticket", "resolved");
+    await persistence.createGrouping("userTickets", "ticket", "email");
     self.getFounderId = async function () {
         let userStatus = await persistence.getUserLoginStatus(process.env.SYSADMIN_EMAIL);
         return userStatus.globalUserId;
@@ -106,7 +107,7 @@ async function AdminPlugin() {
         }
         ticket.resolved = true;
         ticket.resolutionMessage = resolutionMessage;
-        await persistence.updateTicket(ticket);
+        await persistence.updateTicket(id, ticket);
     }
     self.getTicketsCount = async function () {
         let tickets = await persistence.getEveryTicket();
@@ -132,6 +133,9 @@ async function AdminPlugin() {
             });
         }
         return ticketList;
+    }
+    self.getUserTickets = async function (email) {
+        return await persistence.getUserTicketsByEmail(email);
     }
     self.persistence = persistence;
     return self;
