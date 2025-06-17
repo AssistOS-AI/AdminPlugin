@@ -17,6 +17,9 @@ async function AdminPlugin() {
     await persistence.createIndex("ticket", "subject");
     await persistence.createGrouping("tickets", "ticket", "resolved");
     await persistence.createGrouping("userTickets", "ticket", "email");
+
+    const userLogger = await $$.loadPlugin("UserLoggerPlugin");
+
     self.getFounderId = async function () {
         let userStatus = await persistence.getUserLoginStatus(process.env.SYSADMIN_EMAIL);
         return userStatus.globalUserId;
@@ -57,8 +60,10 @@ async function AdminPlugin() {
             throw new Error("Invalid role: " + role);
         }
         let userLoginStatus = await persistence.getUserLoginStatus(email);
+        let previousRole = userLoginStatus.role || constants.ROLES.USER;
         userLoginStatus.role = role;
         await persistence.updateUserLoginStatus(email, userLoginStatus);
+        await userLogger.userLog(userLoginStatus.globalUserId, `Role changed from ${previousRole} to ${role}`);
     }
     self.deleteUser = async function (email) {
         let UserLogin = await $$.loadPlugin("UserLogin");
@@ -199,6 +204,6 @@ module.exports = {
         }
     },
     getDependencies: function () {
-        return ["StandardPersistence"];
+        return ["StandardPersistence", "UserLoggerPlugin"];
     }
 }
