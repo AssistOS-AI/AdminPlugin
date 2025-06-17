@@ -135,7 +135,7 @@ async function AdminPlugin() {
         return ticketList;
     }
     self.getUserTickets = async function (email) {
-        return await persistence.getUserTicketsByEmail(email);
+        return await persistence.getUserTicketsObjectsByEmail(email);
     }
     self.persistence = persistence;
     return self;
@@ -179,6 +179,15 @@ module.exports = {
                 case "getTickets":
                 case "getTicketsCount":
                 case "getUnresolvedTicketsCount":
+                    role = await singletonInstance.getUserRole(email);
+                    if(!role){
+                        return false;
+                    }
+                    return role === constants.ROLES.ADMIN || role === constants.ROLES.MARKETING;
+                case "getUserTickets":
+                    if(email === args[0]){
+                        return true;
+                    }
                     role = await singletonInstance.getUserRole(email);
                     if(!role){
                         return false;
