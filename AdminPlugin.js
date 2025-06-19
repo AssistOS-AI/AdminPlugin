@@ -1,9 +1,6 @@
 const constants = require("../utils/constants.js");
 async function AdminPlugin() {
     let self = {};
-    self.rewardUser = async function (user, referrerId) {
-        return true;
-    }
     const persistence = await $$.loadPlugin("StandardPersistence");
     await persistence.configureTypes({
         ticket: {
