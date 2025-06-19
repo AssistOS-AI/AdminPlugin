@@ -1,4 +1,5 @@
 const constants = require("../utils/constants.js");
+
 async function AdminPlugin() {
     let self = {};
     const persistence = await $$.loadPlugin("StandardPersistence");
@@ -11,18 +12,19 @@ async function AdminPlugin() {
             resolutionMessage: "string",
         }
     });
-    await persistence.createIndex("ticket", "subject");
+    await persistence.createIndex("ticket", "id");
     await persistence.createGrouping("tickets", "ticket", "resolved");
     await persistence.createGrouping("userTickets", "ticket", "email");
 
     const userLogger = await $$.loadPlugin("UserLoggerPlugin");
+    const EmailPlugin = await $$.loadPlugin("EmailPlugin");
 
     self.getFounderId = async function () {
         let userStatus = await persistence.getUserLoginStatus(process.env.SYSADMIN_EMAIL);
         return userStatus.globalUserId;
     }
     self.getUserRole = async function (email) {
-        if(!await persistence.hasUserLoginStatus(email)){
+        if (!await persistence.hasUserLoginStatus(email)) {
             return false;
         }
         let userStatus = await persistence.getUserLoginStatus(email);
@@ -35,7 +37,7 @@ async function AdminPlugin() {
         let allUsersIds = await persistence.getEveryUserLoginStatus();
         const usersIds = allUsersIds.slice(offset, offset + limit);
         let userList = [];
-        for(let userId of usersIds){
+        for (let userId of usersIds) {
             let user = await persistence.getUserLoginStatus(userId);
             userList.push({
                 email: user.email,
@@ -53,7 +55,7 @@ async function AdminPlugin() {
         return users.length;
     }
     self.setUserRole = async function (email, role) {
-        if(!Object.values(constants.ROLES).includes(role)){
+        if (!Object.values(constants.ROLES).includes(role)) {
             throw new Error("Invalid role: " + role);
         }
         let userLoginStatus = await persistence.getUserLoginStatus(email);
@@ -82,7 +84,7 @@ async function AdminPlugin() {
         matchingEmails = matchingEmails.slice(offset, offset + limit);
 
         let users = [];
-        for(let email of matchingEmails){
+        for (let email of matchingEmails) {
             let user = await persistence.getUserLoginStatus(email);
             users.push({
                 email: user.email,
@@ -110,6 +112,18 @@ async function AdminPlugin() {
         ticket.resolved = true;
         ticket.resolutionMessage = resolutionMessage;
         await persistence.updateTicket(id, ticket);
+        try {
+            await EmailPlugin.sendEmail(
+                null, // no userId for system emails
+                ticket.email,
+                process.env.APP_SENDER_EMAIL,
+                `Support ticket ${id} resolved`,
+                `Ticket ${id} has been resolved. Response: ${resolutionMessage}`,
+                `<b>Support ticket ${id} resolved</b><br> <b>Response:</b> ${resolutionMessage}`
+            );
+        } catch (e) {
+            console.error(`Failed to send email to ${ticket.email}: ${e.message}`);
+        }
     }
     self.getTicketsCount = async function () {
         let tickets = await persistence.getEveryTicket();
@@ -155,7 +169,7 @@ module.exports = {
     getAllow: function () {
         return async function (globalUserId, email, command, ...args) {
             let role;
-            switch (command){
+            switch (command) {
                 case "getUserRole":
                 case "founderSpaceExists":
                 case "rewardUser":
@@ -182,16 +196,16 @@ module.exports = {
                 case "getTicketsCount":
                 case "getUnresolvedTicketsCount":
                     role = await singletonInstance.getUserRole(email);
-                    if(!role){
+                    if (!role) {
                         return false;
                     }
                     return role === constants.ROLES.ADMIN || role === constants.ROLES.MARKETING;
                 case "getUserTickets":
-                    if(email === args[0]){
+                    if (email === args[0]) {
                         return true;
                     }
                     role = await singletonInstance.getUserRole(email);
-                    if(!role){
+                    if (!role) {
                         return false;
                     }
                     return role === constants.ROLES.ADMIN || role === constants.ROLES.MARKETING;
@@ -201,6 +215,6 @@ module.exports = {
         }
     },
     getDependencies: function () {
-        return ["StandardPersistence", "UserLoggerPlugin"];
+        return ["StandardPersistence", "UserLoggerPlugin", "EmailPlugin"];
     }
 }
