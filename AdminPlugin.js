@@ -3,21 +3,8 @@ const constants = require("../utils/constants.js");
 async function AdminPlugin() {
     let self = {};
     const persistence = await $$.loadPlugin("StandardPersistence");
-    await persistence.configureTypes({
-        ticket: {
-            email: "string",
-            subject: "string",
-            message: "string",
-            resolved: "boolean",
-            resolutionMessage: "string",
-        }
-    });
-    await persistence.createIndex("ticket", "id");
-    await persistence.createGrouping("tickets", "ticket", "resolved");
-    await persistence.createGrouping("userTickets", "ticket", "email");
-
     const userLogger = await $$.loadPlugin("UserLoggerPlugin");
-    const EmailPlugin = await $$.loadPlugin("EmailPlugin");
+
 
     self.getFounderId = async function () {
         let userStatus = await persistence.getUserLoginStatus(process.env.SYSADMIN_EMAIL);
@@ -95,64 +82,6 @@ async function AdminPlugin() {
         }
         return users;
     }
-
-    self.createTicket = async function (email, subject, message) {
-        await persistence.createTicket({
-            email: email,
-            subject: subject,
-            message: message,
-            resolved: false
-        });
-    }
-    self.resolveTicket = async function (id, resolutionMessage) {
-        let ticket = await persistence.getTicket(id);
-        if (!ticket) {
-            throw new Error("Ticket not found");
-        }
-        ticket.resolved = true;
-        ticket.resolutionMessage = resolutionMessage;
-        await persistence.updateTicket(id, ticket);
-        try {
-            await EmailPlugin.sendEmail(
-                null, // no userId for system emails
-                ticket.email,
-                process.env.APP_SENDER_EMAIL,
-                `Support ticket ${id} resolved`,
-                `Ticket ${id} has been resolved. Response: ${resolutionMessage}`,
-                `<b>Support ticket ${id} resolved</b><br> <b>Response:</b> ${resolutionMessage}`
-            );
-        } catch (e) {
-            console.error(`Failed to send email to ${ticket.email}: ${e.message}`);
-        }
-    }
-    self.getTicketsCount = async function () {
-        let tickets = await persistence.getEveryTicket();
-        return tickets.length;
-    }
-    self.getUnresolvedTicketsCount = async function () {
-        let tickets = await persistence.getTicketsByResolved(false);
-        return tickets.length;
-    }
-    self.getTickets = async function (offset = 0, limit = 10) {
-        let allTickets = await persistence.getEveryTicket();
-        const ticketIds = allTickets.slice(offset, offset + limit);
-        let ticketList = [];
-        for (let ticketId of ticketIds) {
-            let ticket = await persistence.getTicket(ticketId);
-            ticketList.push({
-                id: ticket.id,
-                email: ticket.email,
-                subject: ticket.subject,
-                message: ticket.message,
-                resolved: ticket.resolved,
-                resolutionMessage: ticket.resolutionMessage || "",
-            });
-        }
-        return ticketList;
-    }
-    self.getUserTickets = async function (email) {
-        return await persistence.getUserTicketsObjectsByEmail(email);
-    }
     self.persistence = persistence;
     return self;
 }
@@ -174,7 +103,6 @@ module.exports = {
                 case "founderSpaceExists":
                 case "rewardUser":
                 case "getRoles":
-                case "createTicket":
                     return true;
                 case "getFounderId":
                     // role = await getUserRole(email);
@@ -191,19 +119,6 @@ module.exports = {
                 case "setUserRole":
                 case "getUsersCount":
                 case "getMatchingUsers":
-                case "resolveTicket":
-                case "getTickets":
-                case "getTicketsCount":
-                case "getUnresolvedTicketsCount":
-                    role = await singletonInstance.getUserRole(email);
-                    if (!role) {
-                        return false;
-                    }
-                    return role === constants.ROLES.ADMIN || role === constants.ROLES.MARKETING;
-                case "getUserTickets":
-                    if (email === args[0]) {
-                        return true;
-                    }
                     role = await singletonInstance.getUserRole(email);
                     if (!role) {
                         return false;
@@ -215,6 +130,6 @@ module.exports = {
         }
     },
     getDependencies: function () {
-        return ["StandardPersistence", "UserLoggerPlugin", "EmailPlugin"];
+        return ["StandardPersistence", "UserLoggerPlugin"];
     }
 }
