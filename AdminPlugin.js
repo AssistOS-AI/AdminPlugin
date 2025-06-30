@@ -15,6 +15,11 @@ async function AdminPlugin() {
             return false;
         }
         let userStatus = await persistence.getUserLoginStatus(email);
+
+        if (process.env.SYSADMIN_EMAIL === email) {
+            userStatus.role = constants.ROLES.ADMIN;
+        }
+        console.log("User role is:", userStatus.role);
         return userStatus.role || constants.ROLES.USER;
     }
     self.getRoles = async function () {
