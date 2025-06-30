@@ -11,14 +11,16 @@ async function AdminPlugin() {
         return userStatus.globalUserId;
     }
     self.getUserRole = async function (email) {
+        if (process.env.SYSADMIN_EMAIL === email) {
+            userStatus.role = constants.ROLES.ADMIN;
+            return constants.ROLES.ADMIN;
+        }
         if (!await persistence.hasUserLoginStatus(email)) {
             return false;
         }
         let userStatus = await persistence.getUserLoginStatus(email);
 
-        if (process.env.SYSADMIN_EMAIL === email) {
-            userStatus.role = constants.ROLES.ADMIN;
-        }
+
         console.log("User role is:", userStatus.role);
         return userStatus.role || constants.ROLES.USER;
     }
@@ -31,9 +33,10 @@ async function AdminPlugin() {
         let userList = [];
         for (let userId of usersIds) {
             let user = await persistence.getUserLoginStatus(userId);
+            const userRole = await self.getUserRole(user.email);
             userList.push({
                 email: user.email,
-                role: user.role || constants.ROLES.USER,
+                role: userRole,
                 blocked: user.blocked || false,
                 userInfo: user.userInfo,
             });
@@ -51,7 +54,7 @@ async function AdminPlugin() {
             throw new Error("Invalid role: " + role);
         }
         let userLoginStatus = await persistence.getUserLoginStatus(email);
-        let previousRole = userLoginStatus.role || constants.ROLES.USER;
+        let previousRole = await self.getUserRole(email);
         userLoginStatus.role = role;
         await persistence.updateUserLoginStatus(email, userLoginStatus);
         await userLogger.userLog(userLoginStatus.globalUserId, `Role changed from ${previousRole} to ${role}`);
@@ -78,10 +81,11 @@ async function AdminPlugin() {
         let users = [];
         for (let email of matchingEmails) {
             let user = await persistence.getUserLoginStatus(email);
+            const userRole = await self.getUserRole(email);
             users.push({
                 email: user.email,
                 blocked: user.blocked || false,
-                role: user.role || constants.ROLES.USER,
+                role: userRole,
                 userInfo: user.userInfo,
             });
         }
