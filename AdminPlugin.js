@@ -12,7 +12,6 @@ async function AdminPlugin() {
     }
     self.getUserRole = async function (email) {
         if (process.env.SYSADMIN_EMAIL === email) {
-            userStatus.role = constants.ROLES.ADMIN;
             return constants.ROLES.ADMIN;
         }
         if (!await persistence.hasUserLoginStatus(email)) {
