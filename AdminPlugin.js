@@ -11,15 +11,10 @@ async function AdminPlugin() {
         return userStatus.globalUserId;
     }
     self.getUserRole = async function (email) {
-        if (process.env.SYSADMIN_EMAIL === email) {
-            return constants.ROLES.ADMIN;
-        }
         if (!await persistence.hasUserLoginStatus(email)) {
             return false;
         }
         let userStatus = await persistence.getUserLoginStatus(email);
-
-
         console.log("User role is:", userStatus.role);
         return userStatus.role || constants.ROLES.USER;
     }
@@ -119,12 +114,13 @@ module.exports = {
                     // }
                     // return role === constants.ROLES.ADMIN;
                     return true;
-
-                case "getUsers":
                 case "blockUser":
                 case "unblockUser":
                 case "deleteUser":
                 case "setUserRole":
+                    // can not do this for self
+                    return email !== args[0]
+                case "getUsers":
                 case "getUsersCount":
                 case "getMatchingUsers":
                     role = await singletonInstance.getUserRole(email);
