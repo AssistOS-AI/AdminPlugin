@@ -40,10 +40,16 @@ async function AdminPlugin() {
     }
 
     self.getUsersCount = async function () {
-        let users = await persistence.getEveryUserLoginStatus();
-        return users.length;
+        let result = {allUsers: 0};
+        for (let role of Object.values(constants.ROLES)) {
+            let users = await persistence.getRoleGroupingByRole(role);
+            result[role] = users.length;
+            result.allUsers += users.length;
+        }
+        return result;
     }
     self.setUserRole = async function (email, role) {
+
         if (!Object.values(constants.ROLES).includes(role)) {
             throw new Error("Invalid role: " + role);
         }
@@ -86,6 +92,18 @@ async function AdminPlugin() {
         return users;
     }
     self.persistence = persistence;
+
+    async function createRoleGrouping() {
+        let admins = await persistence.getRoleGroupingByRole(constants.ROLES.ADMIN);
+        if (admins.length === 0) {
+            let users = await persistence.getEveryUserLoginStatusObject();
+            for (let user of users) {
+                await persistence.updateUserLoginStatus(user.id, {role: user.role || constants.ROLES.USER});
+            }
+        }
+    }
+
+    await createRoleGrouping();
     return self;
 }
 
