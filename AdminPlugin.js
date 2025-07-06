@@ -102,7 +102,9 @@ async function AdminPlugin() {
             }
         }
     }
-
+    self.getPublicMethods = function () {
+        return [];
+    }
     await createRoleGrouping();
     return self;
 }
