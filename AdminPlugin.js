@@ -1,4 +1,5 @@
 const constants = require("../utils/constants.js");
+const utils = require("../utils/apiUtils");
 
 async function AdminPlugin() {
     let self = {};
@@ -63,16 +64,29 @@ async function AdminPlugin() {
         let UserLogin = await $$.loadPlugin("UserLogin");
         await UserLogin.deleteUser(email);
     }
-    self.blockUser = async function (email) {
-        let userLoginStatus = await persistence.getUserLoginStatus(email);
+
+    async function extractUserLoginStatus(param) {
+        if (!utils.validateEmail(param)) {
+            let user = await persistence.getUser(param);
+            param = user.email;
+
+        }
+        let userLoginStatus = await persistence.getUserLoginStatus(param);
+        return userLoginStatus;
+    }
+
+    self.blockUser = async function (param) {
+        let userLoginStatus = await extractUserLoginStatus(param)
         userLoginStatus.blocked = true;
         await persistence.updateUserLoginStatus(userLoginStatus.id, userLoginStatus);
     }
-    self.unblockUser = async function (email) {
-        let userLoginStatus = await persistence.getUserLoginStatus(email);
+
+    self.unblockUser = async function (param) {
+        let userLoginStatus = await extractUserLoginStatus(param)
         userLoginStatus.blocked = false;
         await persistence.updateUserLoginStatus(userLoginStatus.id, userLoginStatus);
     }
+
     self.getMatchingUsers = async function (input, offset = 0, limit = 10) {
         let emails = await persistence.getEveryUserLoginStatusEmail();
         let matchingEmails = emails.filter(email => email.includes(input));
@@ -102,6 +116,7 @@ async function AdminPlugin() {
             }
         }
     }
+
     self.getPublicMethods = function () {
         return [];
     }
@@ -139,7 +154,15 @@ module.exports = {
                 case "deleteUser":
                 case "setUserRole":
                     // can not do this for self
-                    return email !== args[0]
+                    if (email === args[0]) {
+                        return false
+                    }
+                    role = await singletonInstance.getUserRole(email);
+                    if (!role) {
+                        return false;
+                    }
+                    return role === constants.ROLES.ADMIN || role === constants.ROLES.MARKETING;
+
                 case "getUsers":
                 case "getUsersCount":
                 case "getMatchingUsers":
