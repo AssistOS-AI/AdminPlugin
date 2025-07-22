@@ -1,9 +1,11 @@
 const constants = require("../utils/constants.js");
 const utils = require("../utils/apiUtils");
+const process = require("process");
 
 async function AdminPlugin() {
     let self = {};
     const persistence = await $$.loadPlugin("StandardPersistence");
+    let emailPlugin = await $$.loadPlugin("EmailPlugin");
     const userLogger = await $$.loadPlugin("UserLoggerPlugin");
 
 
@@ -75,10 +77,13 @@ async function AdminPlugin() {
         return userLoginStatus;
     }
 
-    self.blockUser = async function (param) {
+    self.blockUser = async function (param, reason) {
         let userLoginStatus = await extractUserLoginStatus(param)
         userLoginStatus.blocked = true;
         await persistence.updateUserLoginStatus(userLoginStatus.id, userLoginStatus);
+        let fromUserId = await self.getFounderId();
+        emailPlugin.sendEmail(fromUserId, userLoginStatus.email, process.env.APP_SENDER_EMAIL, "Your Account Has Been Locked", reason, reason);
+
     }
 
     self.unblockUser = async function (param) {
@@ -177,6 +182,6 @@ module.exports = {
         }
     },
     getDependencies: function () {
-        return ["StandardPersistence", "UserLoggerPlugin"];
+        return ["StandardPersistence", "EmailPlugin", "UserLoggerPlugin"];
     }
 }
