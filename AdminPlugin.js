@@ -42,6 +42,22 @@ async function AdminPlugin() {
         return userList;
     }
 
+    self.getUsersByRole = async function (role) {
+        let users = await persistence.getRoleGroupingByRole(role);
+        let userList = [];
+        for (let userId of users) {
+            let user = await persistence.getUserLoginStatus(userId);
+            const userRole = await self.getUserRole(user.email);
+            userList.push({
+                email: user.email,
+                role: userRole,
+                blocked: user.blocked || false,
+                userInfo: user.userInfo,
+            });
+        }
+        return userList;
+    }
+
     self.getUsersCount = async function () {
         let result = {allUsers: 0};
         for (let role of Object.values(constants.ROLES)) {
@@ -51,6 +67,7 @@ async function AdminPlugin() {
         }
         return result;
     }
+
     self.setUserRole = async function (email, role) {
 
         if (!Object.values(constants.ROLES).includes(role)) {
@@ -81,8 +98,11 @@ async function AdminPlugin() {
         let userLoginStatus = await extractUserLoginStatus(param)
         userLoginStatus.blocked = true;
         await persistence.updateUserLoginStatus(userLoginStatus.id, userLoginStatus);
-        let fromUserId = await self.getFounderId();
-        emailPlugin.sendEmail(fromUserId, userLoginStatus.email, process.env.APP_SENDER_EMAIL, "Your Account Has Been Locked", reason, reason);
+        try {
+            await emailPlugin.sendEmail(null, userLoginStatus.email, process.env.APP_SENDER_EMAIL, "Your Account Has Been Locked", reason, reason);
+        } catch (e) {
+            console.error(`Failed to send email to ${userLoginStatus.email}: ${e.message}`);
+        }
 
     }
 
@@ -171,6 +191,7 @@ module.exports = {
                 case "getUsers":
                 case "getUsersCount":
                 case "getMatchingUsers":
+                case "getUsersByRole":
                     role = await singletonInstance.getUserRole(email);
                     if (!role) {
                         return false;
