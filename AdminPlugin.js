@@ -4,9 +4,9 @@ const process = require("process");
 
 async function AdminPlugin() {
     let self = {};
-    const persistence = await $$.loadPlugin("StandardPersistence");
-    let emailPlugin = await $$.loadPlugin("EmailPlugin");
-    const userLogger = await $$.loadPlugin("UserLoggerPlugin");
+    const persistence = $$.loadPlugin("StandardPersistence");
+    let emailPlugin = $$.loadPlugin("EmailPlugin");
+    const userLogger = $$.loadPlugin("UserLoggerPlugin");
 
 
     self.getFounderId = async function () {
@@ -80,7 +80,7 @@ async function AdminPlugin() {
         await userLogger.userLog(userLoginStatus.globalUserId, `Role changed from ${previousRole} to ${role}`);
     }
     self.deleteUser = async function (email) {
-        let UserLogin = await $$.loadPlugin("UserLogin");
+        let UserLogin = $$.loadPlugin("UserLogin");
         await UserLogin.deleteUser(email);
     }
 
