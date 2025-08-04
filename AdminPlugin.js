@@ -69,7 +69,6 @@ async function AdminPlugin() {
     }
 
     self.setUserRole = async function (email, role) {
-
         if (!Object.values(constants.ROLES).includes(role)) {
             throw new Error("Invalid role: " + role);
         }
@@ -77,7 +76,10 @@ async function AdminPlugin() {
         let previousRole = await self.getUserRole(email);
         userLoginStatus.role = role;
         await persistence.updateUserLoginStatus(email, userLoginStatus);
-        await userLogger.userLog(userLoginStatus.globalUserId, `Role changed from ${previousRole} to ${role}`);
+        await userLogger.userLog(userLoginStatus.globalUserId, `Role changed from ${previousRole} to ${role}`, {
+            type: "settings",
+            action: "change_role"
+        });
     }
     self.deleteUser = async function (email) {
         let UserLogin = $$.loadPlugin("UserLogin");
